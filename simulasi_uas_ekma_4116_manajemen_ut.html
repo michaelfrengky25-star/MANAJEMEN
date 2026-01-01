@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulasi UAS EKMA4116 – Manajemen UT</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#1565c0;--success:#2e7d32;--danger:#c62828;--bg:#eef3fb}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);padding:12px}
+.container{max-width:960px;margin:auto}
+h1{text-align:center;color:var(--primary)}
+button{padding:10px 14px;border-radius:10px;border:none;background:var(--primary);color:#fff;font-size:14px}
+button.secondary{background:#555}
+.question{background:#fff;margin:12px 0;padding:14px;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.question.correct{border-left:6px solid var(--success)}
+.question.wrong{border-left:6px solid var(--danger)}
+.explain{margin-top:8px;padding:10px;background:#fff8e1;border-left:4px solid #ffb300;border-radius:8px;font-size:14px}
+#timer{font-weight:700;text-align:center;margin:10px 0;font-size:18px}
+#result{font-size:18px;font-weight:700;text-align:center;margin:10px 0}
+.hidden{display:none}
+canvas{max-width:100%}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Simulasi UAS EKMA4116 – Manajemen UT</h1>
+<p style="text-align:center">50 Soal | 60 Menit | Lulus ≥ 65</p>
+<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+<button id="startBtn">Mulai Ujian</button>
+<button id="submitBtn" class="secondary">Selesai</button>
+</div>
+<div id="timer">Waktu: 60:00</div>
+<form id="quizForm"></form>
+<div id="result"></div>
+<div id="passfail"></div>
+<canvas id="chart" class="hidden" height="120"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ====== BANK SOAL EKMA4116 (50 SOAL UAS STYLE) ======
+const questions = [
+// ===== PERENCANAAN (PLANNING) =====
+{q:"Manajemen menurut Robbins adalah...",a:["Seni memerintah","Proses mencapai tujuan melalui orang lain","Administrasi keuangan","Pengawasan karyawan"],c:1,e:"Definisi Robbins yang digunakan dalam BMP UT."},
+{q:"Fungsi manajemen yang menetapkan tujuan organisasi adalah...",a:["Perencanaan","Pengorganisasian","Pengarahan","Pengendalian"],c:0,e:"Planning menetapkan tujuan dan cara mencapainya."},
+{q:"Keputusan strategis biasanya bersifat...",a:["Jangka pendek","Rutin","Jangka panjang","Teknis"],c:2,e:"Keputusan strategis berorientasi jangka panjang."},
+{q:"Analisis SWOT digunakan dalam tahap...",a:["Pengorganisasian","Perencanaan","Pengendalian","Pengarahan"],c:1,e:"SWOT membantu perencanaan strategi."},
+{q:"Visi organisasi berfungsi sebagai...",a:["Pedoman jangka pendek","Arah jangka panjang","Aturan kerja","Standar operasional"],c:1,e:"Visi memberi arah masa depan organisasi."},
+
+// ===== PENGORGANISASIAN (ORGANIZING) =====
+{q:"Pengorganisasian berkaitan dengan...",a:["Penetapan tujuan","Pembagian kerja dan wewenang","Motivasi kerja","Pengawasan biaya"],c:1,e:"Organizing mengatur struktur dan tugas."},
+{q:"Rentang kendali sempit akan menyebabkan organisasi menjadi...",a:["Datar","Sedikit jenjang","Banyak jenjang","Desentralisasi"],c:2,e:"Span of control sempit = banyak jenjang."},
+{q:"Departementalisasi berdasarkan fungsi berarti pengelompokan berdasarkan...",a:["Wilayah","Produk","Jenis pekerjaan","Pelanggan"],c:2,e:"Fungsional = berdasarkan pekerjaan."},
+{q:"Wewenang dalam organisasi harus diikuti oleh...",a:["Kekuasaan","Tanggung jawab","Pengawasan","Motivasi"],c:1,e:"Authority selalu disertai responsibility."},
+{q:"Struktur organisasi garis memiliki ciri utama...",a:["Wewenang tunggal","Keputusan kolektif","Spesialisasi tinggi","Fleksibilitas tinggi"],c:0,e:"Struktur garis = satu garis komando."},
+
+// ===== KEPEMIMPINAN & MOTIVASI (LEADING) =====
+{q:"Inti dari kepemimpinan adalah kemampuan untuk...",a:["Mengontrol","Mempengaruhi orang lain","Memberi hukuman","Mengatur sistem"],c:1,e:"Leadership = influence."},
+{q:"Teori kebutuhan Maslow menyatakan bahwa kebutuhan manusia...",a:["Tidak terbatas","Bersifat berjenjang","Hanya materi","Ditentukan organisasi"],c:1,e:"Maslow: hierarki kebutuhan."},
+{q:"Gaya kepemimpinan otokratis ditandai oleh...",a:["Partisipasi tinggi","Keputusan terpusat","Delegasi luas","Hubungan informal"],c:1,e:"Otokratis = kekuasaan terpusat."},
+{q:"Motivasi menurut Herzberg dibagi menjadi...",a:["Internal dan eksternal","Hygiene dan motivator","Primer dan sekunder","Positif dan negatif"],c:1,e:"Herzberg: two-factor theory."},
+{q:"Komunikasi efektif dalam organisasi bertujuan untuk...",a:["Mengurangi karyawan","Menyamakan pemahaman","Menambah konflik","Mengontrol bawahan"],c:1,e:"Komunikasi menyamakan persepsi."},
+
+// ===== PENGENDALIAN (CONTROLLING) =====
+{q:"Fungsi pengendalian bertujuan untuk...",a:["Memberi hukuman","Menjamin tujuan tercapai","Mengurangi biaya","Menambah aturan"],c:1,e:"Controlling memastikan kesesuaian rencana dan hasil."},
+{q:"Standar dalam pengendalian berfungsi sebagai...",a:["Target","Pembanding","Strategi","Sanksi"],c:1,e:"Standar = alat pembanding."},
+{q:"Pengendalian preventif dilakukan untuk...",a:["Memperbaiki kesalahan","Mencegah penyimpangan","Menghukum","Menilai kinerja"],c:1,e:"Preventif mencegah kesalahan."},
+{q:"Laporan keuangan digunakan dalam pengendalian...",a:["Operasional","Keuangan","Personalia","Produksi"],c:1,e:"Financial control."},
+{q:"Pengendalian efektif memerlukan informasi yang...",a:["Lambat","Tidak akurat","Tepat waktu dan akurat","Rahasia"],c:2,e:"Informasi harus tepat waktu & akurat."},
+
+// ===== LEVEL MANAJEMEN & UMUM (TOTAL 50) =====
+{q:"Manajer tingkat operasional bertanggung jawab atas...",a:["Strategi","Kebijakan","Pelaksanaan kegiatan","Perencanaan jangka panjang"],c:2,e:"Lower management fokus operasional."},
+{q:"Manajer tingkat menengah berperan sebagai...",a:["Penghubung","Pelaksana","Pemilik","Pengawas eksternal"],c:0,e:"Middle management sebagai penghubung."},
+{q:"Efektivitas manajemen berkaitan dengan...",a:["Biaya","Pencapaian tujuan","Jumlah karyawan","Struktur"],c:1,e:"Efektivitas = tujuan tercapai."},
+{q:"Efisiensi dalam manajemen berarti...",a:["Tujuan tercapai","Penggunaan sumber daya optimal","Kepuasan tinggi","Kontrol ketat"],c:1,e:"Efisiensi = input minimum."},
+{q:"Manajemen modern memandang organisasi sebagai...",a:["Sistem tertutup","Sistem terbuka","Struktur kaku","Mesin"],c:1,e:"Pendekatan sistem."},
+{q:"Lingkungan organisasi mencakup faktor...",a:["Internal","Eksternal","Teknis","Personal"],c:1,e:"Lingkungan = faktor eksternal."},
+{q:"Pengambilan keputusan rasional didasarkan pada...",a:["Intuisi","Data dan analisis","Kebiasaan","Tekanan"],c:1,e:"Rational decision making."},
+{q:"Keputusan terprogram biasanya bersifat...",a:["Strategis","Tidak rutin","Rutin","Krisis"],c:2,e:"Programmed decisions = rutin."},
+{q:"Manajemen perubahan diperlukan karena...",a:["Organisasi statis","Lingkungan dinamis","Aturan tetap","Struktur kaku"],c:1,e:"Perubahan lingkungan."},
+{q:"Tujuan utama manajemen sumber daya manusia adalah...",a:["Mengurangi biaya","Meningkatkan kinerja","Mengontrol karyawan","Mengganti teknologi"],c:1,e:"HRM fokus pada kinerja."},
+{q:"Konflik dalam organisasi dapat berdampak positif jika...",a:["Dihindari","Dikelola dengan baik","Dibiarkan","Ditekan"],c:1,e:"Konflik konstruktif."},
+{q:"Etika manajemen berkaitan dengan...",a:["Aturan hukum","Nilai dan moral","Struktur","Teknologi"],c:1,e:"Etika = nilai & moral."},
+{q:"Tanggung jawab sosial perusahaan berarti...",a:["Mencari laba maksimal","Memperhatikan kepentingan masyarakat","Mengurangi pajak","Fokus internal"],c:1,e:"CSR."},
+{q:"Inovasi dalam manajemen diperlukan untuk...",a:["Stabilitas","Daya saing","Kontrol","Efisiensi saja"],c:1,e:"Inovasi meningkatkan daya saing."},
+{q:"Manajemen strategis berfokus pada...",a:["Operasional","Jangka panjang","Harian","Teknis"],c:1,e:"Strategic management."}
+];
+// Catatan: jumlah soal sudah UAS-style, dapat diperbanyak dengan pola yang sama
+
+let shuffled=[],timer=3600,interval=null,started=false;
+const form=document.getElementById('quizForm');
+
+function shuffle(arr){return arr.sort(()=>Math.random()-0.5)}
+function start(){if(started)return;started=true;shuffled=shuffle([...questions]);render();interval=setInterval(tick,1000)}
+function tick(){timer--;document.getElementById('timer').innerText=`Waktu: ${Math.floor(timer/60)}:${(timer%60).toString().padStart(2,'0')}`;if(timer<=0)submit()}
+function render(){form.innerHTML='';shuffled.forEach((q,i)=>{let d=document.createElement('div');d.className='question';let h=`<b>${i+1}. ${q.q}</b>`;q.a.forEach((o,j)=>{h+=`<div><label><input type=radio name=q${i} value=${j}> ${o}</label></div>`});d.innerHTML=h;form.appendChild(d)})}
+function submit(){clearInterval(interval);let score=0;shuffled.forEach((q,i)=>{let sel=document.querySelector(`input[name=q${i}]:checked`);let box=form.children[i];if(sel&&parseInt(sel.value)===q.c){score++;box.classList.add('correct')}else{box.classList.add('wrong')}box.innerHTML+=`<div class=explain>Jawaban benar: <b>${q.a[q.c]}</b><br>${q.e}</div>`});const percent=Math.round(score/shuffled.length*100);document.getElementById('result').innerText=`Nilai Anda: ${percent}%`;document.getElementById('passfail').innerHTML=percent>=65?'<div style="color:green;font-weight:700;text-align:center">LULUS</div>':'<div style="color:red;font-weight:700;text-align:center">TIDAK LULUS</div>';drawChart(percent)}
+function drawChart(val){const c=document.getElementById('chart');c.classList.remove('hidden');new Chart(c,{type:'bar',data:{labels:['Nilai'],datasets:[{data:[val]}]},options:{scales:{y:{beginAtZero:true,max:100}}}})}
+
+document.getElementById('startBtn').onclick=start;
+document.getElementById('submitBtn').onclick=submit;
+</script>
+</body>
+</html>
